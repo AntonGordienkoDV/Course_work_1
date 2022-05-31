@@ -35,10 +35,12 @@ class VKDownloader:
             with open(path, 'w', encoding='utf-8') as pd:
                 json.dump(photos_data, pd, ensure_ascii=False, indent=4)
         else:
-            with open(os.path.join(path, f'{user_data["id"]}_photos_data.json'), 'w', encoding='utf-8') as pd:
+            path = os.path.join(path, f'{user_data["id"]}_photos_data.json')
+            with open(path, 'w', encoding='utf-8') as pd:
                 data = response_json['response']
                 data['name'] = f"{user_data['first_name']} {user_data['last_name']}"
                 json.dump(data, pd, indent=4, ensure_ascii=False)
+        return path
 
     def get_photos(self, album_id='profile'):
         url = self.host + 'photos.get'
@@ -47,12 +49,12 @@ class VKDownloader:
             'extended': 1,
             'photo_sizes': 1,
             'offset': 0,
-            'count': 2
+            'count': 1000
         }
         print('Get photos from VK... Wait...\n')
         while True:
             response = requests.get(url, params={**self.params, **photos_geting_params}).json()
-            self.make_photos_data_json(response)
+            json_path = self.make_photos_data_json(response)
             if (response['response']['count'] - photos_geting_params['offset']) > photos_geting_params['count']:
                 photos_geting_params['offset'] += photos_geting_params['count']
                 print(f'Writing photos data into log... {photos_geting_params["offset"]} / \
@@ -60,4 +62,4 @@ class VKDownloader:
                 time.sleep(0.33)
             else:
                 print('\nSuccess!\n')
-                break
+                return json_path

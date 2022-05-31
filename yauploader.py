@@ -1,5 +1,7 @@
 import requests
 import os
+import json
+from collections import Counter
 
 
 class YaUploader:
@@ -20,7 +22,10 @@ class YaUploader:
         else:
             url = f'{self.host}/v1/disk/resources'
             headers = self.get_headers()
-            new_folder_path = f'{parent_dir}/{new_dir}'
+            if parent_dir == '/':
+                new_folder_path = f'{parent_dir}{new_dir}'
+            else:
+                new_folder_path = f'{parent_dir}/{new_dir}'
             params = {'path': new_folder_path}
             response = requests.put(url, headers=headers, params=params)
             if response.status_code in [201, 409]:
@@ -55,3 +60,46 @@ class YaUploader:
                     self.upload(os.path.join(file_path, file_name), upload_folder_path)
         else:
             print(f'Error! File or directory {file_path} is not found')
+
+    def get_vk_files_links_list(self, files_data_json_path):
+        files_list = []
+        with open(files_data_json_path, encoding='utf-8') as fd:
+            files_data = json.load(fd)
+        likes = Counter([photo['likes']['count'] for photo in files_data['items']])
+        for photo in files_data['items']:
+            photo_data = dict()
+            photo_data['link'] = photo['sizes'][-1]['url']
+            if likes[photo['likes']['count']] > 1:
+                photo_data['name'] = f"{photo['likes']['count']}_{photo['date']}"
+            else:
+                photo_data['name'] = photo['likes']['count']
+            files_list.append(photo_data)
+        return files_list
+
+    def get_folder_name(self, files_data_json_path):
+        with open(files_data_json_path, encoding='utf-8') as fd:
+            files_data = json.load(fd)
+        return f'Фото_VK_{files_data["name"]}'
+
+    def upload_remote_file(self, file_name: str, file_link: str, upload_folder: str = '/'):
+        url = f'{self.host}/v1/disk/resources/upload'
+        headers = self.get_headers()
+        params = {
+            'path': f"{upload_folder}/{file_name}",
+            'url': file_link
+        }
+        response = requests.post(url, headers=headers, params=params)
+        if response.status_code == 202:
+            return
+        else:
+            print(f'Error {response.status_code}!')
+
+    def upload_remote_files(self, files_data_json_path):
+        new_folder_name = self.get_folder_name(files_data_json_path)
+        upload_folder = self.create_folder(new_dir=new_folder_name)
+        files_list = self.get_vk_files_links_list(files_data_json_path)
+        print(f'Uploading files to {upload_folder}... Wait...\n')
+        for item in files_list:
+            print(f'Uploading file {item["name"]} from {item["link"]}')
+            self.upload_remote_file(item['name'], item['link'], upload_folder)
+
