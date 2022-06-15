@@ -2,6 +2,7 @@ import requests
 import time
 import json
 import os
+from sys import exit
 
 
 class VKDownloader:
@@ -16,8 +17,14 @@ class VKDownloader:
 
     def get_profile_info(self):
         url = self.host + 'users.get'
-        user_data = requests.get(url, params=self.params).json()
-        return user_data['response'][0]
+        user_data = requests.get(url, params={**self.params, **{'user_ids': self.params['owner_id']}}).json()
+        if user_data.get('response', None):
+            self.params['owner_id'] = user_data['response'][0]['id']
+            return user_data['response'][0]
+        else:
+            print(f"Error {user_data['error']['error_code']}: {user_data['error']['error_msg']}")
+            exit()
+
 
     def make_photos_data_json(self, response_json):
         path = os.getcwd()
@@ -49,17 +56,22 @@ class VKDownloader:
             'extended': 1,
             'photo_sizes': 1,
             'offset': 0,
-            'count': 1000
+            'count': 10
         }
         print('Get photos from VK... Wait...\n')
+        self.get_profile_info()
         while True:
             response = requests.get(url, params={**self.params, **photos_geting_params}).json()
-            json_path = self.make_photos_data_json(response)
-            if (response['response']['count'] - photos_geting_params['offset']) > photos_geting_params['count']:
-                photos_geting_params['offset'] += photos_geting_params['count']
-                print(f'Writing photos data into log... {photos_geting_params["offset"]} / \
-{response["response"]["count"]}')
-                time.sleep(0.33)
+            if response.get('response', None):
+                json_path = self.make_photos_data_json(response)
+                if (response['response']['count'] - photos_geting_params['offset']) > photos_geting_params['count']:
+                    photos_geting_params['offset'] += photos_geting_params['count']
+                    print(f'Writing photos data into log... {photos_geting_params["offset"]} / \
+    {response["response"]["count"]}')
+                    time.sleep(0.33)
+                else:
+                    print('\nSuccess!\n')
+                    return json_path
             else:
-                print('\nSuccess!\n')
-                return json_path
+                print(f"Error {response['error']['error_code']}: {response['error']['error_msg']}")
+                exit()

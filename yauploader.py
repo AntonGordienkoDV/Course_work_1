@@ -74,6 +74,7 @@ class YaUploader:
             else:
                 photo_data['name'] = photo['likes']['count']
             files_list.append(photo_data)
+        print(f'\nDownloaded {len(files_list)} photos from VK!')
         return files_list
 
     def get_folder_name(self, files_data_json_path):
@@ -94,12 +95,18 @@ class YaUploader:
         else:
             print(f'Error {response.status_code}!')
 
-    def upload_remote_files(self, files_data_json_path):
+    def upload_remote_files(self, files_data_json_path, count: int = 5):
         new_folder_name = self.get_folder_name(files_data_json_path)
         upload_folder = self.create_folder(new_dir=new_folder_name)
         files_list = self.get_vk_files_links_list(files_data_json_path)
+        n = input(f'\nEnter the number of Photos to upload (0 - upload all photos; Enter - {count} photos by default: ')
+        if n != '':
+            if n == '0' or int(n) == len(files_list):
+                count = -1
+            else:
+                count = int(n)
         print(f'Uploading files to {upload_folder}... Wait...\n')
-        for item in files_list:
+        for item in files_list[:count]:
             print(f'Uploading file {item["name"]} from {item["link"]}')
             self.upload_remote_file(item['name'], item['link'], upload_folder)
 

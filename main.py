@@ -12,5 +12,3 @@ if __name__ == '__main__':
     json_path = vk_dl.get_photos()
     ya_upl = yu.YaUploader(ya_token)
     ya_upl.upload_remote_files(json_path)
-
-
